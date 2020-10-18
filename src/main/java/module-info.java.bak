@@ -1,0 +1,6 @@
+module net.jhorstmann.vectorapitest {
+    requires jdk.incubator.vector;
+    requires jmh.core;
+
+    exports net.jhorstmann.vectorapitest;
+}
