@@ -10,7 +10,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.AverageTime)
 public class SumBenchmark {
 
     public static final VectorSpecies<Double> F64X4 = DoubleVector.SPECIES_256;
@@ -22,7 +22,7 @@ public class SumBenchmark {
 
     @State(Scope.Benchmark)
     public static class Input {
-        @Param({"10000"})
+        @Param({"100000000"})
         int size;
         double[] data;
         byte[] valid;
@@ -68,11 +68,22 @@ public class SumBenchmark {
         return total;
     }
 
-    private static VectorMask<Double> maskFromBits(int mask) {
+    private static VectorMask<Double> maskFromBits(long mask) {
         var vecidx = IDX_I64X4;
         var broadcast = LongVector.broadcast(I64X4, mask & 0x0F);
-        var vecmask = vecidx.and(broadcast).eq(vecidx);
-        return vecmask.cast(F64X4);
+        return vecidx.and(broadcast).reinterpretAsDoubles().eq(IDX_F64X4);
+    }
+
+    private static DoubleVector maskedSum(DoubleVector accumulator, double[] data, int i, long mask) {
+        var maskLo = maskFromBits(mask);
+        var maskHi = maskFromBits(mask >> 4);
+
+        var v1 = DoubleVector.fromArray(F64X4, data, i, maskLo);
+        accumulator = accumulator.add(v1);
+        var v2 = DoubleVector.fromArray(F64X4, data, i + F64X4.length(), maskHi);
+        accumulator = accumulator.add(v2);
+
+        return accumulator;
     }
 
     @Benchmark
@@ -92,18 +103,12 @@ public class SumBenchmark {
             throw new IllegalArgumentException("invalid mask len");
         }
 
-
         var vsum = DoubleVector.broadcast(F64X4, 0.0);
         int i = 0;
         for (; i < vsize; i += 2 * F64X4.length()) {
-            int mask = valid[i / 8] & 0xFF;
-            var maskLo = maskFromBits(mask);
-            var maskHi = maskFromBits(mask >> 4);
+            long mask = valid[i / 8] & 0xFF;
 
-            var v1 = DoubleVector.fromArray(F64X4, data, i, maskLo);
-            vsum = vsum.add(v1);
-            var v2 = DoubleVector.fromArray(F64X4, data, i + F64X4.length(), maskHi);
-            vsum = vsum.add(v2);
+            vsum = maskedSum(vsum, data, i, mask);
         }
 
         double total = vsum.reduceLanes(VectorOperators.ADD);
@@ -125,7 +130,6 @@ public class SumBenchmark {
                 .jvmArgs("--add-modules=jdk.incubator.vector", "-XX:MaxInlineLevel=32", "-XX:+UnlockExperimentalVMOptions", "-XX:+TrustFinalNonStaticFields")
                 .include(SumBenchmark.class.getSimpleName())
                 .addProfiler(LinuxPerfAsmProfiler.class)
-                //.addProfiler(LinuxPerfNormProfiler.class)
                 .threads(1)
                 .forks(1)
                 .build();
