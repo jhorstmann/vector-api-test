@@ -75,15 +75,10 @@ public class SumBenchmark {
     }
 
     private static DoubleVector maskedSum(DoubleVector accumulator, double[] data, int i, long mask) {
-        var maskLo = maskFromBits(mask);
-        var maskHi = maskFromBits(mask >> 4);
+        var vmask = maskFromBits(mask);
 
-        var v1 = DoubleVector.fromArray(F64X4, data, i, maskLo);
-        accumulator = accumulator.add(v1);
-        var v2 = DoubleVector.fromArray(F64X4, data, i + F64X4.length(), maskHi);
-        accumulator = accumulator.add(v2);
-
-        return accumulator;
+        var v1 = DoubleVector.fromArray(F64X4, data, i, vmask);
+        return accumulator.add(v1);
     }
 
     @Benchmark
@@ -103,15 +98,17 @@ public class SumBenchmark {
             throw new IllegalArgumentException("invalid mask len");
         }
 
-        var vsum = DoubleVector.broadcast(F64X4, 0.0);
+        var vsum1 = DoubleVector.broadcast(F64X4, 0.0);
+        var vsum2 = DoubleVector.broadcast(F64X4, 0.0);
         int i = 0;
         for (; i < vsize; i += 2 * F64X4.length()) {
             long mask = valid[i / 8] & 0xFF;
 
-            vsum = maskedSum(vsum, data, i, mask);
+            vsum1 = maskedSum(vsum1, data, i, mask);
+            vsum2 = maskedSum(vsum2, data, i + F64X8.length(), mask >> 4);
         }
 
-        double total = vsum.reduceLanes(VectorOperators.ADD);
+        double total = vsum1.reduceLanes(VectorOperators.ADD) + vsum2.reduceLanes(VectorOperators.ADD);
         if (rsize > 0) {
             int rvalid = valid[i / 8] & 0xFF;
             for (; i < rsize; i++) {
