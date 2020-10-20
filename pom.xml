@@ -24,9 +24,17 @@
                 <version>3.8.1</version>
                 <configuration>
                     <compilerArgs>
-                        <arg>--add-modules</arg>
-                        <arg>jdk.incubator.vector</arg>
+                        <arg>--add-modules=jdk.incubator.vector</arg>
                     </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <configuration>
+                    <useFile>false</useFile>
+                    <failIfNoTests>true</failIfNoTests>
+                    <argLine>--add-modules=jdk.incubator.vector</argLine>
                 </configuration>
             </plugin>
         </plugins>
@@ -43,5 +51,19 @@
             <artifactId>jmh-generator-annprocess</artifactId>
             <version>${jmh.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.5.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.5.2</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 </project>
