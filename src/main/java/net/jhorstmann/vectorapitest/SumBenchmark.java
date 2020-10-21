@@ -53,7 +53,7 @@ public class SumBenchmark {
         Options opt = new OptionsBuilder()
                 .jvmArgs("--add-modules=jdk.incubator.vector", "-XX:MaxInlineLevel=32", "-XX:+UnlockExperimentalVMOptions", "-XX:+TrustFinalNonStaticFields")
                 .include(SumBenchmark.class.getSimpleName())
-                .addProfiler(LinuxPerfAsmProfiler.class)
+                .addProfiler(LinuxPerfAsmProfiler.class, "intelSyntax=true")
                 .threads(1)
                 .forks(1)
                 .build();

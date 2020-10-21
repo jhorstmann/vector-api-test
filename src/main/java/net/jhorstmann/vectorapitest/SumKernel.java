@@ -38,31 +38,28 @@ public class SumKernel {
             return 0.0;
         }
 
-        if (valid.length * 8 < size) {
+        int vsize = size & ~7;
+
+        if (valid.length < (size + 7) >>> 3) {
             throw new IllegalArgumentException("invalid mask len");
         }
 
-        int vsize = size & ~7;
-        int rsize = size & 7;
-
         var vsum1 = DoubleVector.broadcast(F64X4, 0.0);
         var vsum2 = DoubleVector.broadcast(F64X4, 0.0);
-        for (int i=0; i < vsize; i += 2 * F64X4.length()) {
-            long mask = valid[i / 8] & 0xFF;
+        for (int i = 0; i < vsize; i += 8) {
+            long mask = valid[i >>> 3] & 0xFF;
 
             vsum1 = maskedSum(vsum1, data, i, mask);
-            vsum2 = maskedSum(vsum2, data, i + F64X4.length(), mask >>> 4);
+            vsum2 = maskedSum(vsum2, data, i + 4, mask >>> 4);
         }
 
         double total = vsum1.reduceLanes(VectorOperators.ADD);
         total += vsum2.reduceLanes(VectorOperators.ADD);
 
-        if (rsize > 0) {
-            int rvalid = valid[vsize / 8] & 0xFF;
-            for (int i=vsize; i < vsize+rsize; i++) {
-                if ((rvalid & (1 << (i % 8))) != 0) {
-                    total += data[i];
-                }
+        for (int i = vsize; i < size; i++) {
+            long mask = valid[i / 8] & 0xFF;
+            if ((mask & (1 << (i % 8))) != 0) {
+                total += data[i];
             }
         }
 
@@ -77,13 +74,12 @@ public class SumKernel {
         }
 
         int vsize = size & ~7;
-        int rsize = size & 7;
 
         var vsum1 = DoubleVector.broadcast(F64X4, 0.0);
         var vsum2 = DoubleVector.broadcast(F64X4, 0.0);
-        for (int i=0; i < vsize; i += 2*F64X4.length()) {
+        for (int i = 0; i < vsize; i += 8) {
             DoubleVector v1 = DoubleVector.fromArray(F64X4, data, i);
-            DoubleVector v2 = DoubleVector.fromArray(F64X4, data, i + F64X4.length());
+            DoubleVector v2 = DoubleVector.fromArray(F64X4, data, i + 4);
             vsum1 = vsum1.add(v1);
             vsum2 = vsum2.add(v2);
         }
@@ -91,7 +87,7 @@ public class SumKernel {
         double total = vsum1.reduceLanes(VectorOperators.ADD);
         total += vsum2.reduceLanes(VectorOperators.ADD);
 
-        for (int i=vsize; i < vsize+rsize; i++) {
+        for (int i = vsize; i < size; i++) {
             total += data[i];
         }
 
