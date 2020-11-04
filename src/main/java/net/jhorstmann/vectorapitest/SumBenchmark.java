@@ -2,6 +2,8 @@ package net.jhorstmann.vectorapitest;
 
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.profile.LinuxPerfAsmProfiler;
+import org.openjdk.jmh.profile.LinuxPerfC2CProfiler;
+import org.openjdk.jmh.profile.LinuxPerfNormProfiler;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -9,13 +11,13 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.Throughput)
 public class SumBenchmark {
 
 
     @State(Scope.Benchmark)
     public static class Input {
-        @Param({"100000000"})
+        @Param({"1000000"})
         int size;
         double[] data;
         byte[] valid;
@@ -39,7 +41,7 @@ public class SumBenchmark {
         }
     }
 
-    @Benchmark
+    //@Benchmark
     public double sum(Input input) {
         return SumKernel.sum(input.data);
     }
@@ -53,7 +55,8 @@ public class SumBenchmark {
         Options opt = new OptionsBuilder()
                 .jvmArgs("--add-modules=jdk.incubator.vector", "-XX:MaxInlineLevel=32", "-XX:+UnlockExperimentalVMOptions", "-XX:+TrustFinalNonStaticFields")
                 .include(SumBenchmark.class.getSimpleName())
-                .addProfiler(LinuxPerfAsmProfiler.class, "intelSyntax=true")
+                //.addProfiler(LinuxPerfAsmProfiler.class)
+                .addProfiler(LinuxPerfNormProfiler.class)
                 .threads(1)
                 .forks(1)
                 .build();

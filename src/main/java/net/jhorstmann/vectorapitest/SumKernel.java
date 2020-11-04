@@ -1,6 +1,9 @@
 package net.jhorstmann.vectorapitest;
 
 import jdk.incubator.vector.*;
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
 
 public class SumKernel {
     private static final VectorSpecies<Double> F64X4 = DoubleVector.SPECIES_256;
@@ -12,20 +15,30 @@ public class SumKernel {
     private static final IntVector IDX_I32X8 = IntVector.fromArray(I32X8, new int[]{128, 64, 32, 16, 8, 4, 2, 1}, 0);
     private static final FloatVector IDX_F32X8 = IDX_I32X8.reinterpretAsFloats();
 
-    private static VectorMask<Long> maskFromBits(long mask) {
+    private static final Unsafe THE_UNSAFE;
+    private static final IllegalArgumentException INVALID_MASK_LEN = new IllegalArgumentException("invalid mask len");
+
+    static {
+        try {
+            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            THE_UNSAFE = (Unsafe) f.get(null);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new AssertionError("can not access unsafe", e);
+        }
+    }
+
+    private static VectorMask<Double> maskFromBits(long mask) {
         var broadcast = LongVector.broadcast(I64X4, mask & 0x0F);
-        return IDX_I64X4.and(broadcast).eq(IDX_I64X4);
+        return IDX_I64X4.and(broadcast).reinterpretAsDoubles().eq(IDX_F64X4);
     }
 
     private static DoubleVector maskedSum(DoubleVector accumulator, double[] data, int i, long mask) {
         var vmask = maskFromBits(mask);
 
-        var v1 = DoubleVector.fromArray(F64X4, data, i);
+        var vdata = DoubleVector.fromArray(F64X4, data, i);
 
-        // blend as longs in order to use VectorMask<Long>, which should be slightly faster to compute
-        var blended = v1.reinterpretAsLongs()
-                .blend(Double.doubleToLongBits(0.0), vmask)
-                .reinterpretAsDoubles();
+        var blended = vdata.blend(0.0, vmask);
 
         return accumulator.add(blended);
     }
@@ -41,13 +54,16 @@ public class SumKernel {
         int vsize = size & ~7;
 
         if (valid.length < (size + 7) >>> 3) {
-            throw new IllegalArgumentException("invalid mask len");
+            throw INVALID_MASK_LEN;
         }
+
+        int baseOffset = THE_UNSAFE.arrayBaseOffset(byte[].class);
 
         var vsum1 = DoubleVector.broadcast(F64X4, 0.0);
         var vsum2 = DoubleVector.broadcast(F64X4, 0.0);
         for (int i = 0; i < vsize; i += 8) {
-            long mask = valid[i >>> 3] & 0xFF;
+            //long mask = valid[i >>> 3] & 0xFF;
+            long mask = THE_UNSAFE.getByte(valid, baseOffset + (i>>>3)) & 0xFF;
 
             vsum1 = maskedSum(vsum1, data, i, mask);
             vsum2 = maskedSum(vsum2, data, i + 4, mask >>> 4);
