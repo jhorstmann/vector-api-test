@@ -1,6 +1,7 @@
 package net.jhorstmann.vectorapitest;
 
 import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
 public class AddKernel {
@@ -36,6 +37,21 @@ public class AddKernel {
             var v2 = DoubleVector.fromArray(F64X4, b, i, mask);
 
             v1.add(v2).intoArray(result, i, mask);
+        }
+    }
+
+
+    public static void addIfSmaller(double[] a, double[] b, double threshold, double[] result) {
+        assert (a.length == result.length);
+        int len = a.length;
+        for (int i = 0; i < len; i += F64X4.length()) {
+            var mask = F64X4.indexInRange(i, len);
+            var av = DoubleVector.fromArray(F64X4, a, i, mask);
+            var bv = DoubleVector.fromArray(F64X4, b, i, mask);
+
+            var isSmaller = av.compare(VectorOperators.LT, threshold);
+
+            av.add(bv, isSmaller).intoArray(result, i, mask);
         }
     }
 

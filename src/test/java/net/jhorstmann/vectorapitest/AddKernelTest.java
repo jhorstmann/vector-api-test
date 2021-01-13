@@ -7,29 +7,42 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AddKernelTest {
     @Test
-    void testSum() {
+    void testAdd() {
         double[] a = {1, 2, 3, 4, 5};
         double[] b = {10, 20, 30, 40, 50};
-        double[] c = new double[a.length];
+        double[] result = new double[a.length];
 
-        AddKernel.add(a, b, c);
+        AddKernel.add(a, b, result);
 
         double[] expected = {11, 22, 33, 44, 55};
 
-        assertArrayEquals(expected, c);
+        assertArrayEquals(expected, result);
     }
 
     @Test
-    void testSumMasked() {
+    void testAddMasked() {
         double[] a = {1, 2, 3, 4, 5};
         double[] b = {10, 20, 30, 40, 50};
-        double[] c = new double[a.length];
+        double[] result = new double[a.length];
 
-        AddKernel.addMasked(a, b, c);
+        AddKernel.addMasked(a, b, result);
 
         double[] expected = {11, 22, 33, 44, 55};
 
-        assertArrayEquals(expected, c);
+        assertArrayEquals(expected, result);
+    }
+
+    @Test
+    void testAddIfSmaller() {
+        double[] a = {1, 2, 3, 4, 5};
+        double[] b = {10, 20, 30, 40, 50};
+        double[] result = new double[a.length];
+
+        AddKernel.addIfSmaller(a, b, 4, result);
+
+        double[] expected = {11, 22, 33, 4, 5};
+
+        assertArrayEquals(expected, result);
     }
 
 }
