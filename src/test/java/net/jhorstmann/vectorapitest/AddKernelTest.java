@@ -45,4 +45,17 @@ public class AddKernelTest {
         assertArrayEquals(expected, result);
     }
 
+    @Test
+    void testAddShuffled() {
+        double[] a = {1, 2, 3, 4};
+        double[] b = {40, 30, 20, 10};
+        double[] result = new double[a.length];
+
+        AddKernel.addShuffled(a, b, result);
+
+        double[] expected = {11, 22, 33, 44};
+
+        assertArrayEquals(expected, result);
+    }
+
 }

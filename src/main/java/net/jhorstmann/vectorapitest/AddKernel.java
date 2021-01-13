@@ -2,6 +2,7 @@ package net.jhorstmann.vectorapitest;
 
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorShuffle;
 import jdk.incubator.vector.VectorSpecies;
 
 public class AddKernel {
@@ -42,6 +43,7 @@ public class AddKernel {
 
 
     public static void addIfSmaller(double[] a, double[] b, double threshold, double[] result) {
+        assert (a.length == b.length);
         assert (a.length == result.length);
         int len = a.length;
         for (int i = 0; i < len; i += F64X4.length()) {
@@ -52,6 +54,20 @@ public class AddKernel {
             var isSmaller = av.compare(VectorOperators.LT, threshold);
 
             av.add(bv, isSmaller).intoArray(result, i, mask);
+        }
+    }
+
+    public static void addShuffled(double[] a, double[] b, double[] result) {
+        assert (a.length == b.length);
+        assert (a.length == result.length);
+        assert (a.length % 4 == 0);
+        int len = a.length;
+        for (int i = 0; i < len; i += F64X4.length()) {
+            var shuffle = VectorShuffle.fromValues(F64X4, 3, 2, 1, 0);
+            var av = DoubleVector.fromArray(F64X4, a, i);
+            var bv = DoubleVector.fromArray(F64X4, b, i);
+
+            av.add(bv.rearrange(shuffle)).intoArray(result, i);
         }
     }
 
