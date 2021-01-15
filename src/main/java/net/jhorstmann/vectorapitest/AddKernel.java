@@ -8,6 +8,15 @@ import jdk.incubator.vector.VectorSpecies;
 public class AddKernel {
     private static final VectorSpecies<Double> F64X4 = DoubleVector.SPECIES_256;
 
+    public static void addScalar(double[] a, double[] b, double[] result) {
+        assert (a.length == b.length);
+        assert (a.length == result.length);
+
+        for (int i = 0; i < a.length; i++) {
+            result[i] = a[i] + b[i];
+        }
+    }
+
     public static void add(double[] a, double[] b, double[] result) {
         assert (a.length == b.length);
         assert (a.length == result.length);
